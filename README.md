@@ -43,6 +43,8 @@ ChatGPT API 및 Function Calling을 활용해 사용자의 질문을 분석하�
 <img width="327" height="522" alt="2" src="https://github.com/user-attachments/assets/0149d600-bbae-4a9f-8fcb-837b2bdb2e3f" />
 <img width="313" height="510" alt="3" src="https://github.com/user-attachments/assets/ef3e56d2-abfe-42c6-9eda-c82fe40f32a4" />
 
+<br>
+
 
 ## 🔎 파일별 코드 및 기능 살펴보기
 
