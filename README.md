@@ -38,6 +38,12 @@ ChatGPT API 및 Function Calling을 활용해 사용자의 질문을 분석하�
 
 <br>
 
+## 📚 화면 구현 이미지
+<img width="351" height="507" alt="1" src="https://github.com/user-attachments/assets/ff642607-cbf6-499f-a073-f2903874138f" />
+<img width="327" height="522" alt="2" src="https://github.com/user-attachments/assets/0149d600-bbae-4a9f-8fcb-837b2bdb2e3f" />
+<img width="313" height="510" alt="3" src="https://github.com/user-attachments/assets/ef3e56d2-abfe-42c6-9eda-c82fe40f32a4" />
+
+
 ## 🔎 파일별 코드 및 기능 살펴보기
 
 1. [ application.py  ](#1-applicationpy)
@@ -182,4 +188,5 @@ instruction:
 
 
 <br>   
+
 
