@@ -40,12 +40,12 @@ ChatGPT API 및 Function Calling을 활용해 사용자의 질문을 분석하�
 
 ## 🔎 파일별 코드 및 기능 살펴보기
 
-1. [ application.py  ](#-applicationpy)
-2. [characters.py](#-characterspy)
-3. [Chatbot.py](#-Chatbotpy)
-4. [common.py](#-commonpy)
-5. [parallel_function_calling.py](#-parallel_function_callingpy)
-6. [warning_agent.py](#-warning_agentpy)
+1. [ application.py  ](#1-applicationpy)
+2. [characters.py](#2-characterspy)
+3. [Chatbot.py](#3-Chatbotpy)
+4. [common.py](#4-commonpy)
+5. [parallel_function_calling.py](#5-parallel_function_callingpy)
+6. [warning_agent.py](#6-warning_agentpy)
 
 <br>
    
