@@ -33,7 +33,8 @@ ChatGPT API 및 Function Calling을 활용해 사용자의 질문을 분석하�
 - **application.py**: Chatbot 객체, FunctionCalling 객체 생성 및 chat_api 함수 실행  
 
 - **characters.py**: 대화 참여자 및 답변 조건을 지정
-- **Chatbot.py**: 
+- **Chatbot.py**: 사용자의 메시지를 관리하고 OpenAI API에 요청을 보내어 응답을 받아오는 역할을 하며,
+대화 context 관리, 토큰 제한 처리, WarningAgent 연동, instruction 삽입 등의 기능을 함
 - **common.py**:
 - **parallel_function_calling.py**:
 - **warning_agent.py**:
@@ -172,7 +173,124 @@ instruction:
 <br>   
 
 ## 3. Chatbot.py
-설명들
+### 1) __init__(...)
+```
+def __init__(self, system_role, instruction, use_model=model.basic, **kwargs): ...
+```
+- system_role: 모델이 따라야 할 기본 시스템 역할을 부여합니다.
+- instruction: user 메시지에 자동으로 덧붙일 규칙 또는 지시사항을 설정합니다.
+- use_model: 사용할 모델을 지정합니다.
+- user, assistant: WarningAgent에 필요한 정보가 됩니다.
+
+<br>
+
+### 2) _create_warning_agent(...)
+```
+def _create_warning_agent(self):
+    return WarningAgent(
+        model = self.model,
+        user = self.user,
+        assistant = self.assistant
+    )
+```
+- WarningAgent 인스턴스를 생성하여 반환합니다.
+- 사용자 입력 검증, 위험 메시지 감지 등에 활용합니다.
+
+<br>
+
+### 3) handle_token_limit(response)
+```
+def handle_token_limit(self, response):
+    try:
+        if response['usage']['total_tokens'] > self.max_token_size:
+            remove_size = math.ceil(len(self.context) / 10)
+            self.context = [self.context[0]] + self.context[remove_size + 1:]
+    except Exception as e:
+        print(f'handle_token_limit exception : {e}')
+```
+- API 응답의 토큰 사용량을 확인하여, 최대 토큰 제한 초과 시 context의 일부를 삭제합니다.
+- 오래된 메시지를 일정 비율로 제거하여 대화를 유지합니다.
+
+<br>
+
+### 4) add_user_message(message)
+```
+def add_user_message(self, message: str):
+    self.context.append({"role": "user", "content": message})
+```
+- 사용자가 보낸 메시지를 context에 추가합니다.
+
+<br>
+
+### 5) _send_request()
+```
+def _send_request(self): ...
+
+  if gpt_num_tokens(self.context) > self.max_token_size:
+     self.context.pop() ...
+  response = client.chat.completions.create( ...
+
+  except Exception as e:
+      print(f'Exception 오류({type(e)} 발생 : {e})')
+      return makeup_response('[Chatbot에 문제가 발생했습니다. 잠시 뒤 이용해 주세요.]')
+
+  return response
+```
+- 현재 context를 GPT API에 전달하고, 응답을 받아 python 딕셔너리로 반환합니다.
+- 토큰 초과 시 자동으로 메시지를 처리하고 API 오류를 처리합니다.
+- 외부에서 호출하지 않는 내부 메서드(언더스코어)로 작용합니다.
+
+<br>
+
+### 6) send_request()
+```
+def send_request(self):
+    if self.warningAgent.monitor_user( self.context ):
+       return makeup_response( self.warningAgent.warn_user(), "warning" )
+    else:
+        self.context[-1]['content'] += self.instruction
+        return self._send_request()
+```
+- WarningAgent로 위험 메시지를 감지하고, 감지되면 경고 메시지를 반환합니다.
+- 감지되지 않으면, 사용자 메시지+instruction 구조로 실제 요청이 전송됩니다.
+
+<br>
+
+### 7) clear_context()
+```
+def clear_context(self):
+    for idx in reversed(range(len(self.context))):
+        if self.context[idx]['role'] == 'user':
+           self.context[idx]['content'] = self.context[idx]['content'].split('instruction:\n')[0].strip()
+           break
+```
+- 답변을 받은 후에 context에 instruction이 계속 쌓이지 않도록 정리합니다.
+- 최신 user 메시지에서 작동합니다.
+
+<br>
+
+### 8) add_response_message(response)
+```
+def add_response_message(self, response: dict):
+    assistant_msg = response["choices"][0]["message"]
+    self.context.append({
+        "role": assistant_msg["role"],
+        "content": assistant_msg["content"]
+    })
+```
+- API 응답의 assistant 메시지를 context에 추가합니다.
+- role, context 구조대로 메시지를 저장합니다.
+
+<br>
+
+### 9) get_last_response()
+```
+def get_last_response(self) -> str:
+    last_msg = self.context[-1]["content"]
+    print(last_msg)
+    return last_msg
+```
+- 마지막 응답 내용을 콘솔에 출력 후 반환합니다.
 
 
 <br>   
