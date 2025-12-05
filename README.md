@@ -296,7 +296,24 @@ def get_last_response(self) -> str:
 <br>   
 
 ## 4. common.py
-설명들
+### 1) 모델 클래스 지정
+```
+@dataclass(frozen=True)
+class Model:
+    basic: str = "gpt-4o-mini-2024-07-18"
+    advanced: str = "gpt-4o-2024-08-06"
+
+model = Model()
+```
+- dataclass를 사용해 GPT 모델을 정합니다.
+- frozen=True로 설정하 외부에서 값을 변경하지 못하도록 고정합니다.
+
+<br>
+
+### 2) OpenAI 클라이언트 초기화
+```
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), timeout = 30, max_retries = 1 )
+```
 
 
 <br>   
