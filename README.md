@@ -35,7 +35,7 @@ ChatGPT API 및 Function Calling을 활용해 사용자의 질문을 분석하�
 - **characters.py**: 대화 참여자 및 답변 조건을 지정
 - **Chatbot.py**: 사용자의 메시지를 관리하고 OpenAI API에 요청을 보내어 응답을 받아오는 역할을 하며,
 대화 context 관리, 토큰 제한 처리, WarningAgent 연동, instruction 삽입 등의 기능을 함
-- **common.py**:
+- **common.py**: 사용할 GPT 모델을 지정하고, 토큰 수 계산, 날짜 반환을 합니다.
 - **parallel_function_calling.py**:
 - **warning_agent.py**:
 
