@@ -314,6 +314,84 @@ model = Model()
 ```
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), timeout = 30, max_retries = 1 )
 ```
+- 환경 변수로 불러온 API 키를 사용해 OpenAI 클라이언트를 생성합니다.
+- timeout 30초, 재시도 횟수를 1회로 설정해서 과도한 지연을 방지합니다.
+
+<br>
+
+### 3) 예외 상황을 위한 더미 응답 생성
+```
+def makeup_response( message, finish_reason = "ERROR" ):
+    return {
+        "choices": [
+            {
+                "finish_reason": finish_reason,
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": message
+                }
+            }
+        ],
+        "usage": { "total_tokens": 0 },
+    }
+```
+- 한 번에 너무 많은 메시지가 API를 통해 전송되는 것을 막기 위해 token 양을 체크한 후 임계점을 넘어가면 예외처리하는 함수입니다.
+- 프로그램 흐름이 끊기지 않도록 임시 응답을 생성했고, 응답 구조를 실제 OpenAI API 응답과 비슷하게 구현했습니다.
+
+<br>
+
+### 4) gpt_num_tokens()
+```
+def gpt_num_tokens(messages, model="gpt-4o-mini"): ...
+   ...
+      if isinstance(value, str):
+         num_tokens += len(encoding.encode(value))
+      else:
+           try:
+               num_tokens += len(encoding.encode(str(value)))
+           except Exception as e:
+               print(f"[gpt_num_tokens] 인코딩 실패: {value} / 오류: {e}")
+    
+    num_tokens += 3
+
+    return num_tokens
+
+```
+- 대화 메시지 리스트를 받아 전체 토큰 수를 계산합니다.
+- 문자열로 변환 가능한 경우만 인코딩되도록 하였습니다.
+- 문자열이 아니거나 인코딩이 실패하는 경우도 대비하여 처리합니다.
+
+<br>
+
+### 5) 한국의 시간대 (오늘, 어제) 반환
+```
+def today():
+    korea = pytz.timezone('Asia/Seoul') 
+    now = datetime.now(korea)  
+    return(now.strftime("%Y%m%d"))  
+
+def yesterday():    
+    korea = pytz.timezone('Asia/Seoul')  
+    now = datetime.now(korea)
+    one_day = timedelta(days=1)  
+    yesterday = now - one_day  
+    return yesterday.strftime('%Y%m%d')  
+```
+- 한국 시간대 (오늘, 어제)를 얻습니다.
+- 현재 날짜에서 하루를 빼서 어제의 날짜를 구하는 방법으로 어제의 날짜를 얻습니다.
+
+<br>
+
+### 6) 현재 시각 반환
+```
+def currTime():
+    korea = pytz.timezone('Asia/Seoul')
+    now = datetime.now(korea)
+    formatted_now = now.strftime("%Y.%m.%d %H:%M:%S")
+    return(formatted_now)
+```
+- 한국 기준 현재 일시(YYYY.MM.DD HH:MM:SS)를 반환합니다.
 
 
 <br>   
