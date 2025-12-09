@@ -37,7 +37,8 @@ ChatGPT API 및 Function Calling을 활용해 사용자의 질문을 분석하�
 대화 context 관리, 토큰 제한 처리, WarningAgent 연동, instruction 삽입 등의 기능을 함
 - **common.py**: 사용할 GPT 모델을 지정하고, 토큰 수 계산, 날짜 반환을 합니다.
 - **parallel_function_calling.py**: 사용자가 요청한 정보를 리스트 혹은 검색 결과에서 가져와서 답변으로 반환합니다.
-- **warning_agent.py**:
+- **warning_agent.py**: 사용자의 발언을 분석해 불쾌한 언행·모순된 발언 여부를 판별하고, 상황에 따라 경고 메시지를 만듭니다.
+사용자 안전성 및 챗봇 품질을 높이기 위한 감시·피드백 기능을 합니다.
 
 <br>
 
@@ -518,7 +519,115 @@ def run(self, analyzed, analyzed_dict, context): ...
 
 ## 6. warning_agent.py
 >[⬆️파일별 코드 및 기능 살펴보기로 돌아가기](#-파일별-코드-및-기능-살펴보기)
-설명들
+### 1) 템플릿 설정 및 모니터링할 대화 수 길이 설정
+```
+USER_MONITOR_TEMPLATE = """
+<대화록>을 읽고 아래의 json 형식에 따라 답하세요.
+{
+    "{user}의 마지막 대화가 불쾌한 말을 하고 있는지": <true/false>, 
+    "{user}의 마지막 대화가 모순적인 말을 하고 있는지": <true/false>
+}
+<대화록>
+"""
+WARNINGS = [
+    "{user}가 불쾌한 말을 하면 안된다고 지적할 것. '{user}야'로 시작, 20단어 이하",
+    "{user}가 모순된 말을 한다고 지적할 것. '무슨 소리하는 거니'로 시작, 20단어 이하"
+]
+
+MIN_CONTEXT_SIZE = -3
+```
+- GPT에게 사용자 발언을 분석하도록 안내하는 프롬프트 템플릿입니다.
+- 발언 종류별(불쾌/모순) 경고 문구 조건을 정의하고, GPT가 경고 메시지를 생성할 때 지켜야 할 규칙을 설정합니다.
+
+<br>
+
+### 2) class WarningAgent: ...
+#### 2-1) __init__()
+```
+def __init__(self, **kwargs):
+    self.kwargs = kwargs
+    self.model = kwargs["model"]
+    self.user_monitor_template = ( ...
+```
+- 템플릿에 실제 사용자명을 삽입하여 분석 및 경고 설정을 개인화하여 생성합니다.
+- 모델 이름, 사용자명, 역할명 등의 설정을 저장합니다.
+
+<br>
+
+#### 2-2) make_dialog()
+```
+def make_dialogue(self, context):
+    dialogue_list = []
+    for message in context:
+    role = message["role"]
+    ...
+```
+- 최근 대화 로그를 "사용자: 내용" 형식의 문자열로 변환하여, GPT가 쉽게 읽을 수 있게 합니다.
+
+<br>
+
+#### 2-3) monitor_user()
+```
+def monitor_user(self, context):
+     
+    ...
+
+    dialogue = self.make_dialogue(self.checked_context)        
+    context = [
+        {"role": "system", "content": f"당신은 유능한 의사소통 전문가입니다."},
+        {"role": "user", "content": self.user_monitor_template + dialogue}
+    ]
+    try:
+        response = json.loads(self.send_query(context))
+        self.checked_list = [value for value in response.values()]
+    except Exception as e:
+        print(f"monitor-user except:[{e}]")
+        return False
+        
+    print("self.checked_list:",self.checked_list)
+    return sum(self.checked_list) > 0
+```
+- GPT에 전달된 대화를 분석하여 그 결과를 JSON 형태로 반환합니다.
+- 불쾌/모순 여부가 하나라도 True면 경고가 필요하여, checked_list의 합을 계산합니다.
+
+<br>
+
+#### 2-4) warn_user()
+```
+def warn_user(self):
+    idx = [idx for idx, tf in enumerate(self.checked_list) if tf][0] 
+    context = [
+        {"role": "system", "content": f"당신은 {self.kwargs['user']}의 잘못된 언행에 대해 따끔하게 쓴소리하는 친구입니다. {self.warnings[idx]}"},
+    ] + self.checked_context
+    response = self.send_query(context, temperature=0.2, format_type="text")
+    return response
+```
+- 어떤 항목(True)이었는지 인덱스를 기준으로 불쾌한 말인지 / 모순된 말인지를 판단합니다.
+- 이후 해당 조건을 적용한 system 프롬프트를 생성하고, GPT를 호출해 20단어 이하의 짧은 경고 메시지를 생성합니다.
+
+<br>
+
+#### 2-5) send_query()
+```
+def send_query(self, context, temperature=0, format_type="json_object"):
+    try:
+        response = client.chat.completions.create(
+            model=self.model,
+            messages=context,
+            temperature=temperature,
+            response_format={ "type": format_type }
+        ).model_dump()
+        content = response['choices'][0]['message']['content']
+        print(f"query response:[{content}]")
+        return content
+    except Exception as e:
+        print(f"Exception 오류({type(e)}) 발생:{e}")
+        return makeup_response("[경고 처리 중 문제가 발생했습니다. 잠시 뒤 이용해주세요.]")
+```
+- GPT API 호출을 담당하는 메서드입니다.
+- JSON 응답을 호출할 시: response_format=json_object
+- 일반 텍스트 응답을 호출할 시: response_format=text
+- 예외 시: makeup_response() 호출하여 서비스 안정성을 확보합니다.
 
 
 <br>   
