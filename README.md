@@ -402,7 +402,116 @@ def currTime():
 
 ## 5. parallel_function_calling.py
 >[⬆️파일별 코드 및 기능 살펴보기로 돌아가기](#-파일별-코드-및-기능-살펴보기)
-설명들
+### 1) import
+```
+from common import client, model, makeup_response
+import json
+import requests
+from pprint import pprint
+from tavily import TavilyClient
+import os
+
+tavily = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+```
+- common.py에서 OpenAI 클라이언트, 모델명, 에러 대응용 더미 응답 함수를 불러옵니다.
+- requests는 날씨 API를 호출합니다.
+- tavily는 웹 검색 API입니다.
+- pprint는 디버깅용 출력을 위해 import합니다.
+- .env 파일에서 Tavily API 키를 불러옵니다.
+
+<br>
+
+### 2) 정보 불러오기
+```
+global_lat_lon = { ...
+
+regional_foods = { ...
+
+regional_spots = { ...
+```
+- 지역명에 따른 위도, 경도를 매핑합니다. 날씨 API 호출 시 지역명을 입력하면 자동으로 좌표를 사용합니다.
+- 지역별 대표 음식 2~3개를 리스트로 만들어서, “지역 음식 알려줘” 같은 요청에 사용합니다.
+- 지역별 대표 관광명소 리스트는 여행 추천 기능에 사용합니다.
+
+<br>
+
+### 3) 기온 조회 함수
+```
+def get_celsius_temperature(**kwargs):
+    location = kwargs['location']
+    lat_lon = global_lat_lon.get(location)
+    ...
+```
+- 지역명 입력하면, 해당 지역의 위도·경도로 날씨 API를 호출합니다.
+- Open-Meteo API 사용하여 호출된 정보를 현재 섭씨 기온으로 반환합니다.
+
+<br>
+
+### 4) 인터넷 검색
+```
+def search_internet(**kwargs):
+    query = kwargs['search_query']
+    answer = tavily.search(query=query, include_answer=True)['answer']
+    return answer
+```
+- Tavily API를 이용해서 실시간으로 웹에 검색하여, 요약한 답변을 줍니다.
+
+<br>
+
+### 5) 지역별 음식, 관광지 조회
+```
+def get_local_foods(**kwargs): ...
+
+def get_tourist_spots(**kwargs): ...
+```
+- 지역명을 입력하면 대표 음식 리스트, 유명 관광명소 리스트를 반환합니다.
+
+<br>
+
+### 6) Function Calling용 도구 목록
+```
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_celsius_temperature",
+            "description": "지정된 위치의 현재 섭씨 기온 조회",
+            ...
+        }
+    },
+    ...
+]
+```
+- OpenAI에게 전달되는 함수 스펙 정의 목록입니다.
+- GPT가 사용자의 메시지를 분석하여 함수 호출이 필요하다고 판단될 때 실행됩니다.
+- name은 함수명, description은 설명, parameters는 입력 구조(JSON Schema)입니다.
+
+<br>
+
+### 7) FunctionCalling Class
+```
+def __init__(self, model):
+    self.available_functions = { ...
+
+def analyze(self, user_message, tools):
+    try:
+        response = client.chat.completions.create( ...
+
+def run(self, analyzed, analyzed_dict, context): ...
+```
+1. __init__()
+- 실제 Python 함수 이름과 Function Calling 이름을 연결합니다. GPT가 호출한 함수명 문자열을 실제 함수 객체로 매핑합니다.
+
+2. analyze()
+- GPT에 User 메시지를 전달하고 함수 호출이 필요한지 판단합니다.
+- 그 후, 결과(메시지 + 함수 호출 여부)를 반환하거나, 실패하면 makeup_response()로 예외 처리합니다.
+
+3. run()
+- analyze() 결과에서 함수 호출 목록을 읽고 전달된 arguments를 파싱합니다.
+- 함수를 실행하고, 실행 결과를 context에 추가합니다.
+- 마지막으로 GPT에 한 번 더 전달해 전체 응답을 생성합니다.
+
+<br>
 
 
 <br>   
