@@ -1,5 +1,3 @@
-<br>
-
 ## 🚗국내 여행 상담 챗봇(Korean Travel Assistant Chatbot)
 국내 여행 관련 상담을 제공하는 Flask 기반 웹 챗봇 프로젝트입니다.  
 ChatGPT API 및 Function Calling을 활용해 사용자의 질문을 분석하고,  
